@@ -1,0 +1,55 @@
+---
+name: FreeBSD Build
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+env:
+  PKG_NAME: chasquid
+
+jobs:
+  build:
+    runs-on: macos-12
+    name: Build on FreeBSD
+    steps:
+      - name: Checkout ${ env.PKG_NAME }
+        uses: actions/checkout@v3
+        with:
+          repository: 'bbusse/chasquid'
+          ref: 'dev'
+          path: 'chasquid'
+
+      - name: Build on FreeBSD
+        uses: vmactions/freebsd-vm@v0.2.9
+        id: build
+        with:
+          usesh: true
+          sync: sshfs
+          prepare: |
+            pkg install -y curl go
+          run: |
+            cd chasquid
+            go build
+            tar -cJvf ../chasquid-freebsd-amd64-latest.tar.xz chasquid
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: chasquid-freebsd-amd64-latest
+          path: chasquid-freebsd-amd64-latest.tar.xz
+
+      - name: Release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          title: "chasquid"
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          automatic_release_tag: "latest"
+          files: |
+            chasquid-freebsd-amd64-latest.tar.xz
